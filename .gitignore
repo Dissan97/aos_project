@@ -50,3 +50,6 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# Francesco Quaglia syscall_discover
+*.syscall_discover/*
