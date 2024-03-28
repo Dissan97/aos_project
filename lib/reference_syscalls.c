@@ -1,5 +1,5 @@
 #include "include/reference_syscalls.h"
-#include "include/rcu_restrict_list.h"
+#include "include/reference_rcu_restrict_list.h"
 #include "include/reference_header.h"
 #include <linux/printk.h>
 #include <asm-generic/errno-base.h>
@@ -86,7 +86,7 @@ do_change_path_label:
 
         ret = is_path_in(pathname, &restrict_path_list);
         if (ret) return ret;
-        printk("%s: called sys_change_path path=%s, op=%d\n",REFERENCE_SYSCALLS, pathname, op);
+        pr_info("%s: called sys_change_path path=%s, op=%d\n",REFERENCE_SYSCALLS, pathname, op);
         return ret;
 }
 

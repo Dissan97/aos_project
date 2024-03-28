@@ -1,6 +1,6 @@
 #pragma once
 
-#include "rcu_restrict_list.h"
+#include "reference_rcu_restrict_list.h"
 
 extern struct list_head restrict_path_list;
 

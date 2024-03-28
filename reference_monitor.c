@@ -51,10 +51,10 @@
  * *****************************************************
  */ 
 
-#include "lib/include/hook.h"
-#include "lib/include/defer.h"
+#include "lib/include/reference_hook.h"
+#include "lib/include/reference_defer.h"
 #include "lib/include/reference_syscalls.h"
-#include "lib/include/rcu_restrict_list.h"
+#include "lib/include/reference_rcu_restrict_list.h"
 #include "lib/include/scth.h"
 #include "lib/include/reference_types.h"
 #include "lib/include/reference_path_based_syscall.h"
@@ -206,8 +206,8 @@ int init_module(void) {
         }
 
         AUDIT{
-           printk("%s: queuing example received sys_call_table address %px\n",MODNAME,(void*)the_syscall_table);
-           printk("%s: initializing - hacked entries %d\n",MODNAME,HACKED_ENTRIES);
+           pr_info("%s: queuing example received sys_call_table address %px\n",MODNAME,(void*)the_syscall_table);
+           pr_info("%s: initializing - hacked entries %d\n",MODNAME,HACKED_ENTRIES);
         }
 
         new_sys_call_array[0] = (unsigned long)sys_change_state;

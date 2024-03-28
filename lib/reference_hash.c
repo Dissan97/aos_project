@@ -103,3 +103,5 @@ int hash_plain_file(char *salt, struct file *filp_dest, struct file *filp_source
 
         return 0;
 }
+
+
