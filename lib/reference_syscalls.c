@@ -5,6 +5,7 @@
 #include <asm-generic/errno-base.h>
 #include <linux/string.h>
 #include "include/reference_types.h"
+#include "include/reference_hooks.h"
 
 #define REFERENCE_SYSCALLS "REFERENCE SYSCALLS"
 /**
@@ -18,30 +19,48 @@
 #define TEMP_PWD "password"
 
 
-int do_change_state(char * the_password, int op){
 
-        if (the_password == NULL || !(op & ON || op & OFF || op & REC_ON || op & REC_OFF)){
+int do_change_state(char * the_password, int the_state){
+        
+        int i;
+        if (the_password == NULL || !(the_state & ON || the_state & OFF || the_state & REC_ON || the_state & REC_OFF)){
                 return -EINVAL;
         }
-
+        //TODO CHECK THIS
         if (strncmp(TEMP_PWD, the_password, strlen(TEMP_PWD))){
-                return -1;
+                return -EINVAL;
         } 
-                
-        // this must be atomic
-        printk("%s: called sys_change_state old_state %ld\n", REFERENCE_SYSCALLS, current_state);
         
-        if (current_state == REC_ON && op == OFF){
-                current_state = REC_OFF;
+        spin_lock(&(reference_state.write_lock));
+        //the_state = reference_state.state;
+        // this must be atomic
+        //printk("%s: called sys_change_state old_state %ld\n", REFERENCE_SYSCALLS, current_reference_state);
+        pr_info("%s: requested change_state previous state: %ld\n", REFERENCE_SYSCALLS, reference_state.state);
+        if (reference_state.state == the_state){
+                spin_unlock(&(reference_state.write_lock));
+                return -ECANCELED;
         }
+        /*
+        if (the_state == REC_ON && the_state == OFF){
+                the_state = REC_OFF;
+        } else if (current_reference_state == REC_OFF && the_state == ON){
+                the_state = REC_ON;
+        }else {
+                the_state = the_state;
+        }*/
+        reference_state.state = the_state;
 
-        if (current_state == REC_OFF && op == ON){
-                current_state = REC_ON;
+        if ((reference_state.state & REC_ON) || (reference_state.state & ON)){
+                for(i=0;i<HOOKS_SIZE;i++){
+                        enable_kprobe(&probes[i]);
+                }
+        }else {
+                for(i=0;i<HOOKS_SIZE;i++){
+                        disable_kprobe(&probes[i]);
+                }
         }
-
-        current_state = op;
-
-        printk("%s: called sys_change_state current_state=%ld, password=%s\n", REFERENCE_SYSCALLS, current_state, the_password);
+        pr_info("%s: requested change_state new state: %ld\n", REFERENCE_SYSCALLS, reference_state.state);
+        spin_unlock(&(reference_state.write_lock));
         return 0;
 }
 
@@ -49,44 +68,41 @@ int do_change_state(char * the_password, int op){
  * @param path: char* defined pathname that has to be added to restricted list or 
  *              deleted from restricted list
  * @param op: int ADD_PATH to add REMOVE_PATH to remove
- * @return : int 0 all good -1 reporting typeof error
+ * @return : int ret = 0 all good ret < 0 reporting typeof error
  */
 
-int do_change_path(char *the_pwd, char *pathname, int op){
+int do_change_path(char *the_pwd, char *the_path, int op){
 
-        int ret;
-
-        if ((pathname == NULL) || !((op & ADD_PATH) || (op & REMOVE_PATH))){
+        int ret = 0;
+        long current_reference_state;
+        if ((the_path == NULL) || !((op & ADD_PATH) || (op & REMOVE_PATH)) ||
+                (op & REMOVE_PATH & ADD_PATH)){
                 return -EINVAL;
         }
+        pr_info("%s: called sys_change_path path=%s, op=%d\n",REFERENCE_SYSCALLS, the_path, op);
+        //TODO check password
+        spin_lock(&(reference_state.write_lock));
+        current_reference_state = reference_state.state;
+        spin_unlock(&(reference_state.write_lock));
 
-
-        if (!((current_state &  REC_OFF) || (current_state & REC_OFF))){
+        if (!((current_reference_state &  REC_OFF) || (current_reference_state & REC_ON))){
                 if (!((op & REC_ON) || (op & REC_OFF))){
-                        return  -EINVAL;
+                        return  -ECANCELED;
                 }
                 
-                if (do_change_state(the_pwd, op)){
-                        return -1;
+                if ((ret = do_change_state(the_pwd, op))){
+                        return ret;
                 }
-                goto do_change_path_label;
-        }
-
-        if (ret) {
-                return ret;
         }
         
-do_change_path_label:
-        if (op == ADD_PATH)
-                ret = add_path(pathname, &restrict_path_list);
-        if (op == REMOVE_PATH)
-                ret = del_path(pathname, &restrict_path_list);
-
-        if (ret) return  ret;
-
-        ret = is_path_in(pathname, &restrict_path_list);
-        if (ret) return ret;
-        printk("%s: called sys_change_path path=%s, op=%d\n",REFERENCE_SYSCALLS, pathname, op);
+        if (op & ADD_PATH){
+                ret = add_path(the_path);
+        }
+        if (op & REMOVE_PATH){
+                ret = del_path(the_path);
+        }
+        
         return ret;
 }
+
 

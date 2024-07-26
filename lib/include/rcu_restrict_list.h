@@ -5,16 +5,18 @@
 #include <linux/rcupdate.h>
 #include <linux/slab.h>
 #include <linux/rculist.h>
+#include <linux/fs.h>
 
-struct rcu_restrict_path_list {
-  char *pathname;
-  struct list_head list;
+struct rcu_restrict {
+  char *path;
+  struct dentry *dentry;
+  struct list_head node;
+  struct rcu_head rcu;
 };
 
-#define init_restrict_list(name) LIST_HEAD(name)
+extern spinlock_t restrict_path_lock;
+extern struct list_head restrict_path_list;
+int add_path(char *);
+int del_path(char *);
+int is_path_in(char *);
 
-int add_path(char *, struct list_head*);
-int del_path(char *, struct list_head*);
-int is_path_in(char *pathname, struct list_head*);
-
-void safe_delele_list(struct list_head*);

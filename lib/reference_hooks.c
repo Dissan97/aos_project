@@ -21,7 +21,7 @@
 #include <asm/io.h>
 #include <linux/syscalls.h>
 
-#include "include/hook.h"
+#include "include/reference_hooks.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Dissan Uddin Ahmed <dissanahmed@gmail.com>");
@@ -30,6 +30,7 @@ MODULE_AUTHOR("Dissan Uddin Ahmed <dissanahmed@gmail.com>");
 #define bad_dir "prova.aoo"
 
 #define MAX_LEN 256
+
 
 int vfs_open_wrapper(struct kprobe *ri, struct pt_regs * regs)
 {
@@ -56,12 +57,12 @@ int vfs_open_wrapper(struct kprobe *ri, struct pt_regs * regs)
                           			dentry->d_inode->i_mode ^= S_IWUSR;
                           		}
 					//regs->si = (unsigned long)NULL;
-                          		return 0;
+							return 0;
                          
-				}		
-			}
+					}		
+				}
 
-                }
+        	}
         }
         
         return 0;

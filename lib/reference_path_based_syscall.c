@@ -30,7 +30,7 @@ int check_avilable_sys_list(char *sys_name){
 	/*if (sys_name == NULL){
 		return -EINVAL;
 	}*/
-        pr_info("%s: request for this: %s", DEVICE_NAME, sys_name);	
+    pr_info("%s: request for this: %s", DEVICE_NAME, sys_name);	
 	len = strlen(sys_name);
 	
 	for (i = 0; list_sys_call[i] != NULL; i++){
@@ -50,7 +50,7 @@ int check_avilable_sys_list(char *sys_name){
 int parse_opt(char *op_str){
 
 	int i;
-        int j;
+    int j;
 	char *argv[9];    
 	size_t len;
 	int format = 0;
@@ -116,7 +116,7 @@ int change_state_vfs_sys_wrapper(char *argv[], int format){
 	int op = -1;
 	int i;
 
-        pr_info("%s: got request for %s\n", DEVICE_NAME, CHANGE_STATE);
+    pr_info("%s: got request for %s\n", DEVICE_NAME, CHANGE_STATE);
 
 	if (format != 4){
 		return -EBADMSG;
@@ -134,7 +134,7 @@ int change_state_vfs_sys_wrapper(char *argv[], int format){
 		i++;
 	}
         
-        pr_info("%s: ready to call actual syscall sys_change_state with pwd=%s opt=%d\n", DEVICE_NAME, pwd, op);
+    pr_info("%s: ready to call actual syscall sys_change_state with pwd=%s opt=%d\n", DEVICE_NAME, pwd, op);
 	return do_change_state(pwd, op);	
 	
 }
@@ -174,7 +174,7 @@ ssize_t vfs_sys_wrapper_wrt(struct file *filp, const char *buff, size_t len, lof
 
 	char buffer[LINE_SIZE];
 	int i;
-        int j;
+    int j;
 	int ret;
 	char *argv[9];
 	int format = 0;

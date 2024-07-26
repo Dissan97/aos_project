@@ -23,6 +23,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/fs.h>
+#include <linux/semaphore.h>
 #include <linux/cdev.h>
 #include <linux/errno.h>
 #include <linux/device.h>
@@ -45,13 +46,14 @@
 #include "lib/include/reference_header.h"
 #include <linux/rculist.h>
 #include <linux/rcupdate.h>
+#include <linux/list.h>
 
 /* *****************************************************
  *            CUSTOM LIBRARIES
  * *****************************************************
  */ 
 
-#include "lib/include/hook.h"
+#include "lib/include/reference_hooks.h"
 #include "lib/include/defer.h"
 #include "lib/include/reference_syscalls.h"
 #include "lib/include/rcu_restrict_list.h"
@@ -69,10 +71,11 @@ MODULE_DESCRIPTION("Reference Monitor that protects updates on files or director
         for(i=0;i<HACKED_ENTRIES;i++){\
                 ((unsigned long *)the_syscall_table)[restore[i]] = the_ni_syscall;\
         }\
-        protect_memory();
+        protect_memory()
 
 
 #define target_func "vfs_open"
+#define target_vfs_open_kp "vfs_open"
 
 /**
 *  *****************************************************
@@ -81,11 +84,11 @@ MODULE_DESCRIPTION("Reference Monitor that protects updates on files or director
 */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
-__SYSCALL_DEFINEx(2, _change_state, char *, pwd, int, op){
+__SYSCALL_DEFINEx(2, _change_state, char *, pwd, int, state){
 #else
-asmlinkage long sys_change_state(char *pwd, int op){
+asmlinkage long sys_change_state(char *pwd, int state){
 #endif
-        return do_change_state(pwd, op);
+        return do_change_state(pwd, state);
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
@@ -103,22 +106,22 @@ asmlinkage long sys_change_paths(char * pwd, char *path, int op){
 */ 
 
 char pwd[SHA512_LENGTH * 2 + 1] = {0};
-module_param_string(pwd, pwd, sizeof(pwd), 0660);
+module_param_string(pwd, pwd, sizeof(pwd), 0000);
 
 unsigned long the_syscall_table = 0x0;
-module_param(the_syscall_table, ulong, 0660);
+module_param(the_syscall_table, ulong, 0444);
 
 unsigned long locked_path __attribute__((aligned(8)));//this is used to audit how many threads are still sleeping onto the sleep/wakeup queue
 module_param(locked_path,ulong,0660);
 
 unsigned long current_state = REC_OFF;
-module_param(current_state,ulong,0660);
+module_param(current_state,ulong,0444);
 
 unsigned long audit_counter = 0x0;
-module_param(audit_counter, ulong, 0660);
+module_param(audit_counter, ulong, 0444);
 
 unsigned long Major = -1;
-module_param(Major,ulong,0660);
+module_param(Major,ulong,0444);
 
 
 /**
@@ -130,6 +133,14 @@ module_param(Major,ulong,0660);
 
 unsigned long the_ni_syscall;
 char salt[SALT_LENGTH ];
+
+/* 
+  * *****************************************************
+  *             STRUCT FOR RCU STATE HANDLING
+  * *****************************************************
+*/
+state_t reference_state;
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
 long sys_change_state = (unsigned long) __x64_sys_change_state;       
 long sys_change_paths = (unsigned long) __x64_sys_change_paths;       
@@ -148,25 +159,27 @@ int restore[HACKED_ENTRIES] = {[0 ... (HACKED_ENTRIES-1)] -1};
 
 /* 
   * *****************************************************
-  *             PATH RCU_LIST
+  *             RESTRICT PATH RCU_LIST
   * *****************************************************
 */
 
 LIST_HEAD(restrict_path_list);
+spinlock_t restrict_path_lock;
 
 //todo Add kretprobe to block wfs_write
 /* 
   * *****************************************************
-  *             STRUCT KPROBE
+  *             KPROBES' STRUCT
+  *             target_functions={vfs_open, vfs_mkdir, vfs_something}
   * *****************************************************
 */
 
+struct kprobe probes[HOOKS_SIZE];
 struct kprobe vfs_open_kp;
 
-#define target_vfs_open_kp "vfs_open"
 /* 
   * *****************************************************
-  *             PATH SYSCALL DEVICE
+  *             PATH BASED SYSCALL DEVICE
   * *****************************************************
 */
 
@@ -178,10 +191,11 @@ int init_module(void) {
         int i;
         int ret;
 
-        if (LINUX_VERSION_CODE < KERNEL_VERSION(5,11,0)){
+        /*if (LINUX_VERSION_CODE < KERNEL_VERSION(5,11,0)){
 	 	pr_err("%s: unsupported kernel version", MODNAME);
         		return -1; 	
         };
+        */
 
         if (the_syscall_table == 0x0){
                 pr_err("%s: cannot manage sys_call_table address set to 0x0\n",MODNAME);
@@ -189,25 +203,27 @@ int init_module(void) {
         }
 
         if (strlen(pwd) <=8){
-                pr_err("%s: cannot pass such a password=%s\n", MODNAME, pwd);
+                pr_err("%s: password to short\n", MODNAME);
                 return -1;
         }
 
         ret = generate_salt(salt);
 
         if (ret){
+                pr_err("%s: salt generation problem\n", MODNAME);
                 return ret;
         }
 
         ret = hash_plaintext(salt, pwd, pwd);
 
         if (ret){
+                pr_err("%s: hash password problem\n", MODNAME);
                 return ret;
         }
-
+        
         AUDIT{
-           printk("%s: queuing example received sys_call_table address %px\n",MODNAME,(void*)the_syscall_table);
-           printk("%s: initializing - hacked entries %d\n",MODNAME,HACKED_ENTRIES);
+           pr_info("%s: queuing example received sys_call_table address %px\n",MODNAME,(void*)the_syscall_table);
+           pr_info("%s: initializing - hacked entries %d\n",MODNAME,HACKED_ENTRIES);
         }
 
         new_sys_call_array[0] = (unsigned long)sys_change_state;
@@ -228,23 +244,24 @@ int init_module(void) {
 
         protect_memory();
 
-        vfs_open_kp.pre_handler = vfs_open_wrapper;
-        vfs_open_kp.post_handler = vfs_open_post_wrapper;
-        vfs_open_kp.symbol_name = target_vfs_open_kp;
+        probes[0].pre_handler = vfs_open_wrapper;
+        probes[0].post_handler = vfs_open_post_wrapper;
+        probes[0].symbol_name = target_vfs_open_kp;
 
-        ret = register_kprobe(&vfs_open_kp);
+        ret = register_kprobe(&probes[0]);
 
         if (ret < 0){
                 pr_err("%s: unbale to register kprobe for %s\n", MODNAME, target_vfs_open_kp);
                 goto error_syscall_installed;
         }
-        
+        AUDIT
         pr_info("%s: all new system-calls correctly installed on sys-call table\n",MODNAME);
         
 	if (ret < 0) {
 		pr_err("%s: hook init failed, returned %d\n", MODNAME, ret);
                 goto error_syscall_installed;
 	}
+        AUDIT
 	pr_info("%s: read hook module correctly loaded\n", MODNAME);
 
          
@@ -261,9 +278,11 @@ int init_module(void) {
                 ret = Major;
                 goto error_kprobe_installed;
         }
-
+        AUDIT
+        pr_info("%s: char device driver registered\n", MODNAME);
+        reference_state.state = OFF;
+        disable_kprobe(&probes[0]);
         return ret;
-
 
 error_kprobe_installed:
         unregister_kprobe(&vfs_open_kp);
@@ -277,14 +296,26 @@ error_syscall_installed:
 void cleanup_module(void) {
 
         int i;
+        struct rcu_restrict *p;
+
         pr_info("%s: shutting down\n",MODNAME);
-        unregister_kprobe(&vfs_open_kp);
+        unregister_kprobe(&probes[0]);
         pr_info("%s: unregistered the kprobe for %s\n", MODNAME, target_vfs_open_kp);
         unregister_chrdev(Major, DEVICE_NAME);
         pr_info("%s: unregistered the device name=%s with Major=%ld", MODNAME, DEVICE_NAME, Major);
         pr_info("%s: safe releasing nodes in restrict_path_list\n",MODNAME);
-        safe_delele_list(&restrict_path_list);
-	unload_syscall
+        
+        spin_lock(&restrict_path_lock);
+        list_for_each_entry(p, &restrict_path_list, node){      
+                list_del_rcu(&p->node);
+                spin_unlock(&restrict_path_lock);
+                synchronize_rcu();
+                kfree(p);            
+        }
+        spin_unlock(&restrict_path_lock);
+
+        pr_info("%s:  deleted the_rcu_list\n", MODNAME);
+	unload_syscall;
         pr_info("%s: sys-call table restored to its original content\n",MODNAME);
 
 }
