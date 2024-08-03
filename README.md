@@ -7,7 +7,7 @@ Reference monitor to secure writing on protected files or directories
 ## @Accademic_year: 2023/2024
 ### Docs
 https://elixir.bootlin.com/linux/v5.4.105/source
-##@project_info:
+## @project_info:
 Kernel Level Reference Monitor for File Protection
 This specification is related to a Linux Kernel Module (LKM) implementing a reference monitor for file protection. The reference monitor can be in one of the following four states:
 OFF, meaning that its operations are currently disabled;
