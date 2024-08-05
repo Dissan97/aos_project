@@ -9,14 +9,17 @@
 
 struct rcu_restrict {
   char *path;
-  struct dentry *dentry;
+  struct inode *target_inode;
   struct list_head node;
   struct rcu_head rcu;
 };
 
+
 extern spinlock_t restrict_path_lock;
 extern struct list_head restrict_path_list;
+int forbitten_path(const char *);
 int add_path(char *);
 int del_path(char *);
-int is_path_in(char *);
+int is_black_listed(struct dentry *);
+
 

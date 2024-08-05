@@ -8,7 +8,7 @@
 #define OPT "-opt"
 #define PTH "-pth"
 #define LINE_SIZE 256
-#define DEVICE_NAME "REFERENCE SYS_VFS DEVICE"
+#define DEVICE_SYS_VFS "REFERENCE SYS_VFS DEVICE"
 
 
 #define __on "ON"

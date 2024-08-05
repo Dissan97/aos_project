@@ -5,6 +5,7 @@
 #include <linux/module.h> 
 #include <linux/random.h> // For get_random_bytes()
 #include "include/reference_hash.h"
+#include "include/reference_types.h"
 
 
 int generate_salt(char *salt)
@@ -15,7 +16,7 @@ int generate_salt(char *salt)
         }
 
         get_random_bytes(salt, SALT_LENGTH);
-        salt[SALT_LENGTH] = '\0'; // Null terminate the salt
+        salt[SALT_LENGTH + 1] = '\0'; // Null terminate the salt
         return 0;
 }
 

@@ -2,8 +2,6 @@
 
 #include <linux/fs.h>
 
-#define SHA512_LENGTH 64 
-#define SALT_LENGTH 16 // Define the length of the salt
 
 
 

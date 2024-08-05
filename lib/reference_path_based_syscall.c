@@ -30,13 +30,13 @@ int check_avilable_sys_list(char *sys_name){
 	/*if (sys_name == NULL){
 		return -EINVAL;
 	}*/
-    pr_info("%s: request for this: %s", DEVICE_NAME, sys_name);	
+    pr_info("%s: request for this: %s", DEVICE_SYS_VFS, sys_name);	
 	len = strlen(sys_name);
 	
 	for (i = 0; list_sys_call[i] != NULL; i++){
-		pr_info("%s: comparing %s - with %s\n", DEVICE_NAME, list_sys_call[i], sys_name);
+		pr_info("%s: comparing %s - with %s\n", DEVICE_SYS_VFS, list_sys_call[i], sys_name);
 		if (!strncmp(list_sys_call[i], sys_name, strlen(sys_name))){
-			pr_info("%s: found %s on avilable syscall\n", DEVICE_NAME, sys_name);
+			pr_info("%s: found %s on avilable syscall\n", DEVICE_SYS_VFS, sys_name);
 			return i;	
                         
 		}
@@ -65,7 +65,7 @@ int parse_opt(char *op_str){
 			op_str[i] -= 32;
 		} 
 	}
-	pr_info("%s: start parsing this %s\n",DEVICE_NAME, op_str);
+	pr_info("%s: start parsing this %s\n",DEVICE_SYS_VFS, op_str);
 	j = 1;
 	for(i=0;i<len;i++){
 		if(op_str[i] == '|') {
@@ -80,30 +80,30 @@ int parse_opt(char *op_str){
 	for (i = 0; argv[i] != NULL; i++){
 		len = strlen(argv[i]);
 		if (!strncmp(argv[i], __on, len)){
-			pr_info("%s: now in ON\n", DEVICE_NAME);
+			pr_info("%s: now in ON\n", DEVICE_SYS_VFS);
 			ret |= ON;
 		}
 		else if (!strncmp(argv[i], __off, len)){
-			pr_info("%s: now in OFF\n", DEVICE_NAME);
+			pr_info("%s: now in OFF\n", DEVICE_SYS_VFS);
 			ret |= OFF;		
 		}
 		else if (!strncmp(argv[i], __rec_on, len)){
-			pr_info("%s: now in REC_ON\n", DEVICE_NAME);
+			pr_info("%s: now in REC_ON\n", DEVICE_SYS_VFS);
 			ret |= REC_ON;		
 		}
 		else if (!strncmp(argv[i], __rec_off, len)){
-			pr_info("%s: now in REC_OFF\n", DEVICE_NAME);
+			pr_info("%s: now in REC_OFF\n", DEVICE_SYS_VFS);
 			ret |= REC_OFF;		
 		}
 		else if (!strncmp(argv[i], __add_path, len)){
-			pr_info("%s: now in ADD_PATH\n", DEVICE_NAME);
+			pr_info("%s: now in ADD_PATH\n", DEVICE_SYS_VFS);
 			ret |= ADD_PATH;		
 		}
 		else if (!strncmp(argv[i], __remove_path, len)){
-			pr_info("%s: now in REMOVE_PATH\n", DEVICE_NAME);
+			pr_info("%s: now in REMOVE_PATH\n", DEVICE_SYS_VFS);
 			ret |= REMOVE_PATH;		
 		}
-		pr_info("%s: argv[i]=%s -> ret =%d\n", DEVICE_NAME, argv[i], ret);
+		pr_info("%s: argv[i]=%s -> ret =%d\n", DEVICE_SYS_VFS, argv[i], ret);
 	}
 	
 	
@@ -116,7 +116,7 @@ int change_state_vfs_sys_wrapper(char *argv[], int format){
 	int op = -1;
 	int i;
 
-    pr_info("%s: got request for %s\n", DEVICE_NAME, CHANGE_STATE);
+    pr_info("%s: got request for %s\n", DEVICE_SYS_VFS, CHANGE_STATE);
 
 	if (format != 4){
 		return -EBADMSG;
@@ -134,7 +134,7 @@ int change_state_vfs_sys_wrapper(char *argv[], int format){
 		i++;
 	}
         
-    pr_info("%s: ready to call actual syscall sys_change_state with pwd=%s opt=%d\n", DEVICE_NAME, pwd, op);
+    pr_info("%s: ready to call actual syscall sys_change_state with pwd=%s opt=%d\n", DEVICE_SYS_VFS, pwd, op);
 	return do_change_state(pwd, op);	
 	
 }
@@ -163,7 +163,7 @@ int change_path_vfs_sys_wrapper(char *argv[], int format){
 		}
 		i++;
 	}
-	pr_info("%s: calling the sys_change_path with pwd=%s, path=%s, op=%d\n", DEVICE_NAME,
+	pr_info("%s: calling the sys_change_path with pwd=%s, path=%s, op=%d\n", DEVICE_SYS_VFS,
 	pwd, pathname, op);
 	return do_change_path(pwd, pathname, op);
 }
@@ -190,7 +190,7 @@ ssize_t vfs_sys_wrapper_wrt(struct file *filp, const char *buff, size_t len, lof
 	buffer[len] = '\0';
 	j = 1;
 
-        pr_info("%s: got this: %s\n", DEVICE_NAME, buffer);
+        pr_info("%s: got this: %s\n", DEVICE_SYS_VFS, buffer);
 	
 	for (i = 0; i < len; i++){
 		if (buffer[i] == '\n'){
@@ -210,7 +210,7 @@ ssize_t vfs_sys_wrapper_wrt(struct file *filp, const char *buff, size_t len, lof
 
   	argv[0] = buffer;
         
-        pr_info("%s: requested syscall %s checking availability\n", DEVICE_NAME, argv[0]);
+        pr_info("%s: requested syscall %s checking availability\n", DEVICE_SYS_VFS, argv[0]);
 
 	ret = check_avilable_sys_list(argv[0]);
 
@@ -235,7 +235,7 @@ ssize_t vfs_sys_wrapper_wrt(struct file *filp, const char *buff, size_t len, lof
 	
 
 	
-	printk("%s: get this from user %s\n", DEVICE_NAME, buffer);
+	printk("%s: get this from user %s\n", DEVICE_SYS_VFS, buffer);
 
 	return (ssize_t)len;
 }
