@@ -50,7 +50,7 @@ int is_path_in(const char *the_path)
 	rcu_read_unlock();
 
 	//pr_err("%s: path does not exists\n", RCU_RESTRICT_LIST);
-        return -EEXIST;
+        return -1;
 
  /*       int ret = -1;
         if (!the_path || !the_rcu_list) return -EINVAL;
@@ -109,43 +109,24 @@ int add_path(char *the_path)
 
         err = kern_path(the_path, LOOKUP_FOLLOW, &dummy_path);
         if (err){
+                kfree(entry->path);
+                kfree(entry);
                 return err;
         }
-        entry->target_inode = dummy_path.dentry->d_inode;
+
+        if (!dummy_path.dentry->d_inode){
+                kfree(entry->path);
+                kfree(entry);
+                return -ECANCELED;
+        }
+        entry->i_ino = dummy_path.dentry->d_inode->i_ino;   
+        
         spin_lock(&restrict_path_lock);
         list_add_rcu(&entry->node, &restrict_path_list);
         spin_unlock(&restrict_path_lock);
         return 0;
-
-        /*
-        struct rcu_restrict_path_list *entry;
-        size_t the_path_len;
-        
-        if (!the_path || !the_rcu_list) return -EINVAL;
-        if (!is_path_in(the_path, the_rcu_list)){
-                pr_info("%s: ALREDY EXIST\n", RCU_RESTRICT_LIST);
-                return -EINVAL;
-        }
-        the_path_len = strlen(the_path);
-        
-        entry = kmalloc(sizeof(struct rcu_restrict_path_list), GFP_KERNEL);
-        if (!entry) return -ENOMEM;
-        
-
-        entry->path = kmalloc(sizeof(char) * (the_path_len + 1) , GFP_KERNEL);
-        if (!entry->path) {
-                kfree(entry);
-                return -ENOMEM;
-        }
-
-
-        strncpy(entry->path, the_path, the_path_len);
-        INIT_LIST_HEAD(&entry->list);
-        list_add_rcu(&entry->list, the_rcu_list);
-        pr_info("%s: inserted %s\n", RCU_RESTRICT_LIST, the_path);
-        return 0;
-        */
 }
+
 
 
 int del_path(char *the_path)
@@ -185,38 +166,32 @@ int del_path(char *the_path)
    return -ENOKEY;   
 }
 int forbitten_path(const char *the_path){
-        
+        if (!the_path) {
+                return -1;
+        }
        return (strncmp(the_path, proc, 5) == 0 ||
         strncmp(the_path, sys, 4) == 0 ||
         strncmp(the_path, run, 4) == 0 ||
         strncmp(the_path, usr, 4) == 0 ||
         strncmp(the_path, var, 4) == 0 ||
-        strncmp(the_path, bin, 4) == 0) ? -1 : 0;
+        strncmp(the_path, bin, 4) == 0 ) ? -1 : 0;
 }
 
 
-int is_black_listed(struct dentry *dentry){
+int is_black_listed(const char *path, unsigned long i_ino){
 
         struct rcu_restrict *entry;
-        char *dentry_path;
-        char dir_buff[MAX_PATH_LEN];
-        if (!dentry){
+        if (!path){
                 return -EINVAL;
         }
-
-        dentry_path=dentry_path_raw(dentry, dir_buff, MAX_PATH_LEN);
         
-        if (forbitten_path(dentry_path) < 0){
-                return -EINVAL;
-        }
-
         rcu_read_lock();
         list_for_each_entry_rcu(entry, &restrict_path_list, node) {
-		if(!strcmp(dentry_path, entry->path) || 
-                ((dentry->d_inode->i_ino == entry->target_inode->i_ino) || (dentry->d_inode->i_sb == entry->target_inode->i_sb))) {
+		if(!strcmp(path, entry->path) || entry->i_ino == i_ino) {
 			rcu_read_unlock();
 			return 0;
 		}
+                
 	}
 	rcu_read_unlock();
         return -EEXIST;

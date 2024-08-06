@@ -32,7 +32,7 @@ int do_change_state(char * the_pwd, int the_state){
         
         int i;
         unsigned long ret;
-        char from_user_password[MAX_PATH_LEN];
+        char from_user_password[MAX_FROM_USER];
         const struct cred *cred;
         
         cred = current_cred();
@@ -47,7 +47,7 @@ int do_change_state(char * the_pwd, int the_state){
         //TODO CHECK THIS
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
-        ret = copy_from_user(from_user_password, the_pwd, MAX_PATH_LEN);
+        ret = copy_from_user(from_user_password, the_pwd, MAX_FROM_USER);
         if (ret < 0){
                 pr_err("%s: cannot copy from the user the password\n", REFERENCE_SYSCALLS);
                 return -EACCES;
@@ -105,8 +105,8 @@ int do_change_path(char *the_pwd, char *the_path, int op){
 
         int ret = 0;
         long current_reference_state;
-        char from_user_password[MAX_PATH_LEN];
-        char from_user_path[MAX_PATH_LEN];
+        char from_user_password[MAX_FROM_USER];
+        char from_user_path[MAX_FROM_USER];
         const struct cred *cred;
         
         cred = current_cred();
@@ -121,12 +121,12 @@ int do_change_path(char *the_pwd, char *the_path, int op){
         }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
-        ret = copy_from_user(from_user_password, the_pwd, MAX_PATH_LEN);
+        ret = copy_from_user(from_user_password, the_pwd, MAX_FROM_USER);
         if (ret < 0){
                 pr_err("%s: cannot copy from the user the password\n", REFERENCE_SYSCALLS);
                 return -EACCES;
         }
-        ret = copy_from_user(from_user_path, the_path, MAX_PATH_LEN);
+        ret = copy_from_user(from_user_path, the_path, MAX_FROM_USER);
         if (ret < 0){
                 pr_err("%s: cannot copy from the user the path\n", REFERENCE_SYSCALLS);
                 return -EACCES;

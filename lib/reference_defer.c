@@ -33,10 +33,11 @@ void defer_bottom_half(struct work_struct *work){
     char *file_contents = NULL;
     char *ciphertext = NULL;
     pr_info("bottom_half: work started\n");
+    
     ciphertext = kmalloc(SHA512_LENGTH * 2 + 1, GFP_KERNEL);
     if (!ciphertext) {
         pr_err("Failed to allocate memory for ciphertext\n");
-        return;
+        goto bottom_half_out;
     }
 
     // Open the executable file
@@ -46,7 +47,7 @@ void defer_bottom_half(struct work_struct *work){
     set_fs(old_fs);
 
     if (IS_ERR(file)) {
-        pr_err("Failed to open file: %s\n", data->path_name);
+        pr_err("defer_bottom: Failed to open file: %s\n", data->path_name);
         goto err_ct_allocated;
     }
 
@@ -74,15 +75,16 @@ void defer_bottom_half(struct work_struct *work){
     pr_info("Process TGID: %d, Thread ID: %d, UID: %d, EUID: %d, Path: %s, Hash: %s\n",
             data->tgid, data->tid, data->uid, data->euid, data->path_name, ciphertext);
 
-bottom_half_out:
-    kfree(data->path_name);
-    kfree(data);
+
 err_file_contents_allocated:
     kfree(file_contents);
 err_filp_opened:
     filp_close(file, NULL);
 err_ct_allocated:
     kfree(ciphertext);
+bottom_half_out:
+    kfree(data->path_name);
+    kfree(data);
     // Free allocated memory
     
 
@@ -95,6 +97,7 @@ void defer_top_half(void (*work_func)(struct work_struct *)){
     struct file *exe_file;
     char *path_name;
     int path_len;
+    char dir[MAX_FILE_NAME];
 
     // Allocate work data
     data = kmalloc(sizeof(*data), GFP_KERNEL);
@@ -128,8 +131,21 @@ void defer_top_half(void (*work_func)(struct work_struct *)){
         return;
     }
 
+    path_name = dentry_path_raw(exe_file->f_path.dentry, dir, MAX_FILE_NAME);
+    if (!path_name){
+        kfree(data);
+        return;
+    }
+    path_len = strnlen(path_name, MAX_FILE_NAME);
+    data->path_name = kzalloc(path_len + 1,GFP_KERNEL);
+    if (!data->path_name){
+        kfree(data);
+        return;
+    }
+    strncpy(data->path_name, path_name, path_len);
+
     // Allocate and copy the path name
-    path_len = exe_file->f_path.dentry->d_name.len + 1;
+    /*path_len = exe_file->f_path.dentry->d_name.len + 1;
     path_name = kmalloc(path_len, GFP_KERNEL);
     if (!path_name) {
         path_put(&exe_file->f_path);
@@ -143,6 +159,7 @@ void defer_top_half(void (*work_func)(struct work_struct *)){
     fput(exe_file);
     data->path_name = path_name;
     pr_info("top_half: work queued\n");
+    */
 
     // Initialize and queue the work
     INIT_WORK(&data->work, work_func);

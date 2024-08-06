@@ -7,9 +7,11 @@
 #define ADD_PATH 0x10       // 0001 0000
 #define REMOVE_PATH 0x20    // 0010 0000
 #define HOOKS_SIZE 4
-#define MAX_PATH_LEN PAGE_SIZE
+#define MAX_PATH_LEN (PAGE_SIZE)
+#define MAX_FROM_USER (MAX_PATH_LEN >> 4)
 #define SHA512_LENGTH (1 << 6) 
 #define SALT_LENGTH (1 << 4) // Define the length of the salt
+#define MAX_FILE_NAME 256
 #pragma once
 
 #define MODNAME "REFERENCE MONITOR"

@@ -150,6 +150,12 @@ long sys_change_paths = (unsigned long) __x64_sys_change_paths;
 #else
 #endif
 
+/* 
+  * *****************************************************
+  *              SYSTEM CALLS
+  * *****************************************************
+*/
+
 unsigned long new_sys_call_array[] = {0x0,0x0};//please set to sys_got_sleep and sys_change_paths at startup
 #define HACKED_ENTRIES (int)(sizeof(new_sys_call_array)/sizeof(unsigned long))
 int restore[HACKED_ENTRIES] = {[0 ... (HACKED_ENTRIES-1)] -1};
@@ -387,12 +393,12 @@ static int __init reference_monitor_init(void)
         }
         AUDIT
         pr_info("%s: workqueue created\n", MODNAME);
+        /*
         daemon_task = kthread_run(daemon_housekeepr_restrict_list, NULL, DAEMON_NAME);
         if ((ret = IS_ERR(daemon_task))){
                 pr_err("Failed to create daemon thread\n");
                 goto error_work_queue_installed;
-        }
-
+        }*/
         return ret;
 error_work_queue_installed:
         destroy_workqueue(deferred_queue);
@@ -448,7 +454,7 @@ static void __exit reference_monitor_cleanup(void)
         destroy_workqueue(deferred_queue);
         AUDIT
         pr_info("%s: work queue destryed\n", MODNAME);
-        kthread_stop(daemon_task);
+        //kthread_stop(daemon_task);
         AUDIT
         pr_info("%s: stopped %s\n", MODNAME, DAEMON_NAME);
 }
